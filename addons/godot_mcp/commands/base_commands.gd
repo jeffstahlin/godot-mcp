@@ -13,6 +13,7 @@ const RUNTIME_RES := "mcp_runtime_res.json"
 const SCREENSHOT_REQ := "mcp_screenshot_req.json"
 const SCREENSHOT_RES := "mcp_screenshot_res.png"
 const SCREENSHOT_META := "mcp_screenshot_meta.json"
+const INPUT_QUEUE := "mcp_input_queue.json"
 
 
 func get_commands() -> Dictionary:
@@ -72,6 +73,31 @@ func _queue_input(events: Array) -> void:
 	var bridge = _get_input_bridge()
 	if bridge:
 		bridge.queue_events(events)
+		return
+	# MCPInputBridge is a project autoload, so it is instantiated in the running
+	# GAME's process - never in the EDITOR's, which is where these commands run.
+	# The lookup above therefore always fails here, and input was silently
+	# dropped while the caller still received {"queued": true}.
+	#
+	# Every other cross-process command in this file already hands off through a
+	# user:// file (see _runtime_call and _request_screenshot); input was the one
+	# that did not. The game-side bridge polls this exact file, so writing it
+	# directly is the same contract, just from the side that can reach it.
+	_write_input_queue(events)
+
+
+func _write_input_queue(events: Array) -> void:
+	var path := _user_file(INPUT_QUEUE)
+	var existing: Array = []
+	if FileAccess.file_exists(path):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if parsed is Array:
+			existing = parsed
+	existing.append_array(events)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(existing))
+		file.close()
 
 
 func _get_input_bridge() -> Node:
