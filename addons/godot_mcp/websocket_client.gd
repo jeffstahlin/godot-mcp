@@ -11,7 +11,12 @@ var command_router: Node
 
 const DEFAULT_PORT := 6505
 const RECONNECT_BASE_SEC := 1.0
-const RECONNECT_MAX_SEC := 60.0
+## Ceiling on the reconnect backoff. The MCP server is spawned per Claude Code
+## session, so it is absent between sessions and the backoff reaches its ceiling
+## every time; at the old 60s an editor left running looked permanently dead for
+## a full minute after a new session started, which reads as "restart Godot".
+## A connect attempt to loopback is nearly free, so keep the ceiling short.
+const RECONNECT_MAX_SEC := 5.0
 const PING_INTERVAL_SEC := 10.0
 const BUFFER_SIZE := 8 * 1024 * 1024
 
