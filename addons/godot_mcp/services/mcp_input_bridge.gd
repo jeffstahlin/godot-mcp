@@ -18,6 +18,16 @@ func queue_events(events: Array) -> void:
 		file.close()
 
 
+func _ready() -> void:
+	# A game paused by its own UI (a results screen, a pause menu) would
+	# otherwise silence this bridge completely: an autoload inherits the
+	# pausable default, so `get_tree().paused = true` stops `_process` and
+	# every MCP request times out. That is precisely the moment a caller
+	# most wants to inspect the game. The bridge is a debug channel and
+	# must outlive the pause it is trying to observe.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
 func _process(_delta: float) -> void:
 	var path := OS.get_user_data_dir().path_join(QUEUE_FILE)
 	if not FileAccess.file_exists(path):

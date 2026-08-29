@@ -12,6 +12,16 @@ var _is_recording := false
 var _handling := false
 
 
+func _ready() -> void:
+	# A game paused by its own UI (a results screen, a pause menu) would
+	# otherwise silence this bridge completely: an autoload inherits the
+	# pausable default, so `get_tree().paused = true` stops `_process` and
+	# every MCP request times out. That is precisely the moment a caller
+	# most wants to inspect the game. The bridge is a debug channel and
+	# must outlive the pause it is trying to observe.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
