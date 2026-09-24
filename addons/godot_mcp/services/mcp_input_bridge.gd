@@ -48,13 +48,19 @@ func _apply(ev: Dictionary) -> void:
 			e.pressed = ev.get("pressed", true)
 			Input.parse_input_event(e)
 		"mouse_click":
-			var e := InputEventMouseButton.new()
-			e.position = Vector2(ev.get("x", 0), ev.get("y", 0))
-			e.button_index = int(ev.get("button", MOUSE_BUTTON_LEFT))
-			e.pressed = true
-			Input.parse_input_event(e)
-			e.pressed = false
-			Input.parse_input_event(e)
+			# A new event object for each edge. Input holds a parsed event by
+			# reference until the frame's flush, so one object parsed twice,
+			# with pressed flipped in between, turned the queued press into a
+			# second release (measured 2026-09-24: a Liquid UI plate never
+			# pressed while the same click still moved the hover onto it, and
+			# the engine warned that an input event object was parsed more
+			# than once in the same frame).
+			for down in [true, false]:
+				var e := InputEventMouseButton.new()
+				e.position = Vector2(ev.get("x", 0), ev.get("y", 0))
+				e.button_index = int(ev.get("button", MOUSE_BUTTON_LEFT))
+				e.pressed = down
+				Input.parse_input_event(e)
 		"mouse_move":
 			var e := InputEventMouseMotion.new()
 			e.position = Vector2(ev.get("x", 0), ev.get("y", 0))
