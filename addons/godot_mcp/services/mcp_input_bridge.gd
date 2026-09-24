@@ -60,7 +60,13 @@ func _apply(ev: Dictionary) -> void:
 			e.position = Vector2(ev.get("x", 0), ev.get("y", 0))
 			Input.parse_input_event(e)
 		"action":
-			if ev.get("pressed", true):
-				Input.action_press(str(ev.get("action", "")))
-			else:
-				Input.action_release(str(ev.get("action", "")))
+			# A real event, not just Input's action state. Input.action_press()
+			# dispatches nothing, so anything that reads input through _input or
+			# _unhandled_input -- a menu, any UI -- never saw the press (measured
+			# 2026-09-24: a Liquid UI menu ignored it). parse_input_event() sets
+			# the same action state AND sends the event, so polled actions
+			# (Input.is_action_pressed) keep working too.
+			var e := InputEventAction.new()
+			e.action = StringName(str(ev.get("action", "")))
+			e.pressed = ev.get("pressed", true)
+			Input.parse_input_event(e)
