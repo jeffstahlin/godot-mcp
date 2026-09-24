@@ -28,6 +28,8 @@ export class GodotBridge {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private rebindTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
+  /** Why this server was told never to claim the port, or null if it may. */
+  private idleReason: string | null = null;
   readonly port: number;
 
   constructor(port = Number(process.env.GODOT_MCP_PORT ?? DEFAULT_PORT)) {
@@ -45,6 +47,17 @@ export class GodotBridge {
         if (ws.readyState === WebSocket.OPEN) ws.send(ping);
       }
     }, HEARTBEAT_MS);
+  }
+
+  /**
+   * Records why this server was deliberately never started, so every tool call
+   * says so instead of blaming another process for the port. Only one server
+   * can own the port, and the one that owns it is the one the editor talks to,
+   * so a server whose session has no use for Godot must never take it from one
+   * that does.
+   */
+  stayIdle(reason: string): void {
+    this.idleReason = reason;
   }
 
   get connected(): boolean {
@@ -68,6 +81,9 @@ export class GodotBridge {
 
   async call(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
     const socket = this.activeClient();
+    if (!socket && this.idleReason) {
+      throw new Error(`Godot tools are off in this session: ${this.idleReason}.`);
+    }
     if (!socket) {
       throw new Error(
         this.wss

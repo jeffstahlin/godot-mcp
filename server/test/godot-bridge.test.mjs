@@ -140,6 +140,15 @@ test("a second server process survives the port being taken", async (t) => {
   assert.ok(await waitFor(() => taker.listening, 5000), "should bind after the holder exits");
 });
 
+test("a server that stayed off the port says why when a tool is called", async (t) => {
+  const bridge = new GodotBridge(await takePort());
+  t.after(() => bridge.close());
+  bridge.stayIdle("C:/work/app is not inside a Godot project");
+
+  await assert.rejects(bridge.call("ping_editor"), /not inside a Godot project/);
+  assert.equal(bridge.listening, false);
+});
+
 test("a server that lost the port explains itself instead of blaming the editor", async (t) => {
   const port = await takePort();
   const holder = new GodotBridge(port);
